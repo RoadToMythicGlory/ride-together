@@ -18,9 +18,6 @@ workflows:
     integrations:
       app_store_connect: RideTogether
     environment:
-      ios_signing:
-        distribution_type: app_store
-        bundle_identifier: org.ridetogether.app
       groups:
         - ride_together_mobile
       vars:
@@ -52,6 +49,15 @@ workflows:
           set -e
           cd "$CM_BUILD_DIR/apps/mobile/ios/App"
           pod install
+      - name: Set up keychain
+        script: keychain initialize
+      - name: Fetch or create signing files
+        script: |
+          app-store-connect fetch-signing-files "org.ridetogether.app" \
+            --type IOS_APP_STORE \
+            --create
+      - name: Add certificates to keychain
+        script: keychain add-certificates
       - name: Apply code signing profiles
         script: xcode-project use-profiles
       - name: Increment build number
