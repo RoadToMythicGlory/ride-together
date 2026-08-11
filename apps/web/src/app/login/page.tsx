@@ -6,13 +6,43 @@ import { FormEvent, Suspense, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Field } from '@/components/ui/field';
-import { login, saveSession } from '@/lib/api';
+import { GoogleButton } from '@/components/ui/google-button';
+import { googleLogin, login, saveSession } from '@/lib/api';
+import { isGoogleLoginEnabled } from '@/lib/google-auth';
 
 function LoginForm() {
   const router = useRouter();
   const search = useSearchParams();
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  function goNext() {
+    const next = search.get('next');
+    router.replace(next && next.startsWith('/') ? next : '/home');
+  }
+
+  async function onGoogleCredential(idToken: string) {
+    setError(null);
+    try {
+      const data = await googleLogin({ idToken });
+      if (data?.needsRegistration) {
+        sessionStorage.setItem(
+          'rt_google_signup',
+          JSON.stringify({
+            idToken,
+            email: data.email ?? '',
+            fullName: data.fullName ?? '',
+          }),
+        );
+        router.push('/register?google=1');
+        return;
+      }
+      saveSession(data);
+      goNext();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'שגיאה בהתחברות עם Google');
+    }
+  }
 
   async function onSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -25,8 +55,7 @@ function LoginForm() {
         String(form.get('password')),
       );
       saveSession(data);
-      const next = search.get('next');
-      router.replace(next && next.startsWith('/') ? next : '/home');
+      goNext();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'שגיאה בהתחברות');
     } finally {
@@ -69,6 +98,19 @@ function LoginForm() {
             {loading ? 'מתחבר…' : 'המשך'}
           </Button>
         </form>
+
+        {isGoogleLoginEnabled() ? (
+          <div className="mt-6">
+            <div className="flex items-center gap-3">
+              <span className="h-px flex-1 bg-line" />
+              <span className="text-xs font-medium text-muted">או</span>
+              <span className="h-px flex-1 bg-line" />
+            </div>
+            <div className="mt-4">
+              <GoogleButton onCredential={onGoogleCredential} onError={setError} />
+            </div>
+          </div>
+        ) : null}
 
         {error ? <p className="mt-4 text-sm text-danger">{error}</p> : null}
 

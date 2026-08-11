@@ -5,6 +5,7 @@ import type { RequestUser } from '../../common/request-context';
 import { AuthService } from './auth.service';
 import {
   ForgotPasswordDto,
+  GoogleAuthDto,
   LoginDto,
   RefreshDto,
   RegisterDto,
@@ -25,6 +26,11 @@ export class AuthController {
   @Post('login')
   login(@Body() dto: LoginDto) {
     return this.auth.login(dto);
+  }
+
+  @Post('google')
+  googleLogin(@Body() dto: GoogleAuthDto) {
+    return this.auth.googleLogin(dto);
   }
 
   @Post('refresh')

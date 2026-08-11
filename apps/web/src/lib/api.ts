@@ -174,6 +174,25 @@ export async function register(input: {
   return res.json();
 }
 
+export async function googleLogin(input: {
+  idToken: string;
+  tenantSlug?: string;
+  capabilities?: Array<'RIDER' | 'PARENT'>;
+  ageAttested18?: boolean;
+  acceptedTerms?: boolean;
+  acceptedPrivacy?: boolean;
+  phone?: string;
+  fullName?: string;
+}) {
+  const res = await fetch(`${API_URL}/api/auth/google`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(input),
+  });
+  if (!res.ok) throw new Error(await parseError(res));
+  return res.json();
+}
+
 export async function forgotPassword(email: string) {
   const res = await fetch(`${API_URL}/api/auth/forgot-password`, {
     method: 'POST',

@@ -56,6 +56,45 @@ export class LoginDto {
   tenantSlug?: string;
 }
 
+export class GoogleAuthDto {
+  /** Google ID token (credential) obtained on the client */
+  @IsString()
+  @MinLength(20)
+  idToken!: string;
+
+  @IsOptional()
+  @IsString()
+  tenantSlug?: string;
+
+  // Registration fields — required only when creating a new account via Google
+  @IsOptional()
+  @IsArray()
+  @ArrayUnique()
+  @IsIn(['RIDER', 'PARENT'], { each: true })
+  capabilities?: Array<'RIDER' | 'PARENT'>;
+
+  @IsOptional()
+  @IsBoolean()
+  ageAttested18?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  acceptedTerms?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  acceptedPrivacy?: boolean;
+
+  @IsOptional()
+  @IsString()
+  phone?: string;
+
+  @IsOptional()
+  @IsString()
+  @MinLength(2)
+  fullName?: string;
+}
+
 export class RefreshDto {
   @IsString()
   refreshToken!: string;

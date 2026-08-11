@@ -24,6 +24,10 @@ export const envSchema = z.object({
   S3_BUCKET: z.string().default('ride-together'),
   S3_REGION: z.string().default('us-east-1'),
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
+  GOOGLE_CLIENT_ID: z.string().optional(),
+  GOOGLE_CLIENT_SECRET: z.string().optional(),
+  GOOGLE_CLIENT_ID_IOS: z.string().optional(),
+  GOOGLE_CLIENT_ID_ANDROID: z.string().optional(),
 });
 
 export type AppEnv = z.infer<typeof envSchema>;

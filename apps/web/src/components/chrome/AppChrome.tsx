@@ -37,9 +37,9 @@ const NAV: Record<string, { href: string; label: string }[]> = {
 };
 
 const AREA_ROLES: Record<string, string[]> = {
-  rider: ['RIDER', 'ADMIN', 'EVENT_MANAGER'],
-  parent: ['PARENT', 'ADMIN'],
-  manager: ['EVENT_MANAGER', 'ADMIN'],
+  rider: ['RIDER', 'ADMIN', 'EVENT_MANAGER', 'SUPER_ADMIN'],
+  parent: ['PARENT', 'ADMIN', 'SUPER_ADMIN'],
+  manager: ['EVENT_MANAGER', 'ADMIN', 'SUPER_ADMIN'],
   admin: ['ADMIN', 'SUPER_ADMIN'],
 };
 

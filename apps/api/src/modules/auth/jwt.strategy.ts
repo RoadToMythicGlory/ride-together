@@ -70,9 +70,6 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     for (const pr of platformRoles) {
       for (const p of PLATFORM_PERMISSIONS[pr] ?? []) permissions.add(p);
     }
-    if (platformRoles.includes(PLATFORM_ROLES.SUPER_ADMIN)) {
-      // SUPER_ADMIN keeps full catalog; still merge DB tenant perms below
-    }
     for (const mr of membership?.roles ?? []) {
       for (const rp of mr.role.permissions) {
         permissions.add(rp.permission.key as Permission);

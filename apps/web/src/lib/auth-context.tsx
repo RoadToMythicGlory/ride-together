@@ -85,7 +85,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       hasRole: (...roles: string[]) => {
         if (!me) return false;
         if (isSuperAdmin) return true;
-        return roles.some((r) => me.tenantRoles.includes(r) || me.platformRoles.includes(r));
+        const tenantRoles = me.tenantRoles ?? [];
+        const platformRoles = me.platformRoles ?? [];
+        return roles.some((r) => tenantRoles.includes(r) || platformRoles.includes(r));
       },
       isSuperAdmin,
       switchToTenant: async (tenantId: string) => {

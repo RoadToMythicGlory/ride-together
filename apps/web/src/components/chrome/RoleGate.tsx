@@ -43,7 +43,8 @@ export function RoleGate({
           החשבון שלכם לא כולל את התפקיד הנדרש למסך זה בארגון הפעיל.
         </p>
         <p className="mt-2 text-sm text-muted">
-          ארגון: {me.activeTenant?.name ?? '—'} · תפקידים: {me.tenantRoles.join(', ') || 'אין'}
+          ארגון: {me.activeTenant?.name ?? '—'} · תפקידים:{' '}
+          {[...(me.tenantRoles ?? []), ...(me.platformRoles ?? [])].join(', ') || 'אין'}
         </p>
         <Link href="/home" className="mt-8 text-sm font-semibold text-accent">
           חזרה לפורטל

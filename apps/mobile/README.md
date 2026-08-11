@@ -45,6 +45,39 @@ npx cap sync android
 npx cap open android
 ```
 
+## Google Sign-In (native)
+
+The web app detects Capacitor and uses [`@capgo/capacitor-social-login`](https://github.com/Cap-go/capacitor-social-login) instead of the browser Google button. After `pnpm install`, run `npx cap sync` to pull the native plugin in.
+
+Google Cloud project: **ridetogether-505216** (clients under *Google Auth Platform → Clients*).
+
+### iOS
+
+1. iOS OAuth client already exists (`RideTogether iOS`, bundle `org.ridetogether.app`).
+2. Add the reversed client id as a URL scheme in `ios/App/App/Info.plist`:
+
+```xml
+<key>CFBundleURLTypes</key>
+<array>
+  <dict>
+    <key>CFBundleURLSchemes</key>
+    <array>
+      <string>com.googleusercontent.apps.705514632415-jlrrk4c6rrlmvsjv3835jhh3dpt1s6qv</string>
+    </array>
+  </dict>
+</array>
+```
+
+3. Ensure the web static export is built with `NEXT_PUBLIC_GOOGLE_CLIENT_ID` and `NEXT_PUBLIC_GOOGLE_CLIENT_ID_IOS` set (add them to the `ride_together_mobile` Codemagic env group).
+
+### Android
+
+Android sign-in uses Credential Manager with the **web** client id, but Google still requires an **Android** OAuth client (package name + SHA-1) in the same project:
+
+1. Get your signing SHA-1: `cd apps/mobile/android && ./gradlew signingReport` (debug keystore for local builds; use the release/Play App Signing SHA-1 for store builds).
+2. Google Cloud console → Google Auth Platform → Clients → Create client → **Android** → package `org.ridetogether.app` + the SHA-1.
+3. No client id needs to be copied anywhere — the plugin passes the web client id (`NEXT_PUBLIC_GOOGLE_CLIENT_ID`).
+
 ## Store notes
 
 - Age rating: **17+** — adults only. Not a Kids app.

@@ -1,18 +1,35 @@
 'use client';
 
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { FormEvent, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { FormEvent, Suspense, useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Field } from '@/components/ui/field';
 import { LEGAL } from '@/content/legal';
-import { register, saveSession } from '@/lib/api';
+import { googleLogin, register, saveSession } from '@/lib/api';
 
-export default function RegisterPage() {
+type GoogleSignup = { idToken: string; email: string; fullName: string };
+
+function RegisterForm() {
   const router = useRouter();
+  const search = useSearchParams();
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [google, setGoogle] = useState<GoogleSignup | null>(null);
+
+  useEffect(() => {
+    if (search.get('google') !== '1') return;
+    try {
+      const raw = sessionStorage.getItem('rt_google_signup');
+      if (raw) {
+        const parsed = JSON.parse(raw) as GoogleSignup;
+        if (parsed?.idToken) setGoogle(parsed);
+      }
+    } catch {
+      /* ignore malformed state */
+    }
+  }, [search]);
 
   async function onSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -33,19 +50,37 @@ export default function RegisterPage() {
       return;
     }
     try {
-      const data = await register({
-        email: String(form.get('email')),
-        password: String(form.get('password')),
-        fullName: String(form.get('fullName')),
-        capabilities,
-        ageAttested18: true,
-        acceptedTerms: true,
-        acceptedPrivacy: true,
-      });
+      const data = google
+        ? await googleLogin({
+            idToken: google.idToken,
+            fullName: String(form.get('fullName') || '') || undefined,
+            capabilities,
+            ageAttested18: true,
+            acceptedTerms: true,
+            acceptedPrivacy: true,
+          })
+        : await register({
+            email: String(form.get('email')),
+            password: String(form.get('password')),
+            fullName: String(form.get('fullName')),
+            capabilities,
+            ageAttested18: true,
+            acceptedTerms: true,
+            acceptedPrivacy: true,
+          });
+      if (google) sessionStorage.removeItem('rt_google_signup');
       saveSession(data);
       router.replace('/onboarding');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'שגיאה');
+      if (google) {
+        // The Google token may have expired — send the user back to sign in again.
+        setError(
+          (err instanceof Error ? err.message : 'שגיאה') +
+            ' — נסו להתחבר שוב עם Google',
+        );
+      } else {
+        setError(err instanceof Error ? err.message : 'שגיאה');
+      }
     } finally {
       setLoading(false);
     }
@@ -66,18 +101,32 @@ export default function RegisterPage() {
         <p className="mt-2 text-sm text-muted">
           למבוגרים בלבד ({LEGAL.minAge}+).
         </p>
+        {google ? (
+          <p className="mt-2 text-sm text-accent">
+            נרשמים עם חשבון Google‏ {google.email} — נשאר רק להשלים כמה פרטים.
+          </p>
+        ) : null}
 
         <form onSubmit={onSubmit} className="mt-8 space-y-4">
-          <Field label="שם מלא" name="fullName" required />
-          <Field label="אימייל" name="email" type="email" required autoComplete="email" />
           <Field
-            label="סיסמה"
-            name="password"
-            type="password"
-            required
-            minLength={8}
-            autoComplete="new-password"
+            label="שם מלא"
+            name="fullName"
+            required={!google}
+            defaultValue={google?.fullName ?? ''}
           />
+          {google ? null : (
+            <>
+              <Field label="אימייל" name="email" type="email" required autoComplete="email" />
+              <Field
+                label="סיסמה"
+                name="password"
+                type="password"
+                required
+                minLength={8}
+                autoComplete="new-password"
+              />
+            </>
+          )}
 
           <fieldset className="space-y-3 border-t border-line pt-4">
             <legend className="text-sm font-medium text-muted">מי אני?</legend>
@@ -132,5 +181,19 @@ export default function RegisterPage() {
         </p>
       </motion.div>
     </main>
+  );
+}
+
+export default function RegisterPage() {
+  return (
+    <Suspense
+      fallback={
+        <main className="flex min-h-[100svh] items-center justify-center bg-bg text-sm text-muted">
+          טוען…
+        </main>
+      }
+    >
+      <RegisterForm />
+    </Suspense>
   );
 }
