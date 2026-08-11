@@ -1,4 +1,4 @@
-﻿{
+{
   "name": "@ride-together/mobile",
   "version": "0.0.1",
   "private": true,
@@ -15,6 +15,7 @@
     "@capacitor/ios": "^7.2.0"
   },
   "devDependencies": {
-    "@capacitor/cli": "^7.2.0"
+    "@capacitor/cli": "^7.2.0",
+    "typescript": "^5.8.3"
   }
 }
