@@ -1,14 +1,13 @@
 # RideTogether — Capacitor builds (Codemagic Mac runners)
-# Docs: https://docs.codemagic.io/yaml-quick-start/building-an-ionic-app/
+# The web UI (Next.js) is statically exported and BUNDLED into the app (no remote URL).
 #
-# Before first build (you do this once in the Codemagic UI after login):
-# 1. Connect this GitHub/GitLab repo
-# 2. Team settings → Integrations → App Store Connect API key
-# 3. Environment variable group `ride_together_mobile`:
-#      CAPACITOR_SERVER_URL = https://YOUR-PRODUCTION-WEB-URL  (required, HTTPS)
-#      APP_STORE_APPLE_ID   = numeric App Store Connect app id (after you create the app)
-# 4. Code signing: enable automatic iOS signing for bundle id org.ridetogether.app
-#    OR upload distribution cert + App Store profile
+# One-time setup in the Codemagic UI:
+# 1. Connect this GitHub repo
+# 2. Team settings → Integrations → App Store Connect API key, named exactly: RideTogether
+# 3. Environment variable group `ride_together_mobile` (optional but recommended):
+#      NEXT_PUBLIC_API_URL  = https://YOUR-API-DOMAIN   (backend API; placeholder OK for first build)
+#      APP_STORE_APPLE_ID   = numeric App Store Connect app id (after creating the app in ASC)
+# 4. Code signing: automatic iOS signing for bundle id org.ridetogether.app
 # 5. Start workflow: ios-testflight
 
 workflows:
@@ -16,9 +15,7 @@ workflows:
     name: iOS → TestFlight
     max_build_duration: 120
     instance_type: mac_mini_m2
-    working_directory: apps/mobile
     integrations:
-      # Rename to match the integration name you create in Codemagic UI
       app_store_connect: RideTogether
     environment:
       ios_signing:
@@ -29,34 +26,30 @@ workflows:
       vars:
         XCODE_WORKSPACE: ios/App/App.xcworkspace
         XCODE_SCHEME: App
-        # Set APP_STORE_APPLE_ID in the env group after creating the app in ASC
       node: 22
       xcode: latest
       cocoapods: default
     scripts:
-      - name: Install JS deps
+      - name: Build web UI (static export)
         script: |
-          npm install --legacy-peer-deps || true
-          corepack enable
-          # Prefer pnpm from monorepo root if available
-          cd "$CM_BUILD_DIR"
-          if command -v pnpm >/dev/null 2>&1; then
-            pnpm install --filter @ride-together/mobile...
-          else
-            npm install -g pnpm@9.15.9
-            pnpm install --filter @ride-together/mobile...
-          fi
-      - name: Point shell at production web + sync native
+          set -e
+          cd "$CM_BUILD_DIR/apps/web"
+          npm install --no-audit --no-fund
+          export MOBILE_STATIC_EXPORT=1
+          export NEXT_PUBLIC_API_URL="${NEXT_PUBLIC_API_URL:-https://api.ridetogether.invalid}"
+          npx next build
+          test -f out/index.html || { echo "Static export failed: out/index.html missing"; exit 1; }
+      - name: Bundle web UI into Capacitor + sync native
         script: |
+          set -e
           cd "$CM_BUILD_DIR/apps/mobile"
-          test -n "$CAPACITOR_SERVER_URL" || { echo "CAPACITOR_SERVER_URL missing (HTTPS required)"; exit 1; }
-          case "$CAPACITOR_SERVER_URL" in
-            https://*) ;;
-            *) echo "CAPACITOR_SERVER_URL must be https://..."; exit 1 ;;
-          esac
+          npm install --no-audit --no-fund
+          rm -rf www
+          cp -R ../web/out www
           npx cap sync ios
       - name: CocoaPods
         script: |
+          set -e
           cd "$CM_BUILD_DIR/apps/mobile/ios/App"
           pod install
       - name: Apply code signing profiles
@@ -68,10 +61,11 @@ workflows:
             LATEST=$(app-store-connect get-latest-testflight-build-number "$APP_STORE_APPLE_ID" || echo 0)
             agvtool new-version -all $((LATEST + 1))
           else
-            agvtool new-version -all $((CM_BUILD_NUMBER))
+            agvtool new-version -all $((BUILD_NUMBER))
           fi
       - name: Build IPA
         script: |
+          set -e
           cd "$CM_BUILD_DIR/apps/mobile"
           xcode-project build-ipa \
             --workspace "$XCODE_WORKSPACE" \
@@ -84,28 +78,33 @@ workflows:
       app_store_connect:
         auth: integration
         submit_to_testflight: true
-        # submit_to_app_store: false until you are ready for review
+        # submit_to_app_store: false until ready for review
 
-  android-debug:
-    name: Android debug APK
+  android-release:
+    name: Android release APK
     max_build_duration: 90
     instance_type: linux_x2
-    working_directory: apps/mobile
     environment:
       groups:
         - ride_together_mobile
       node: 22
       java: 17
     scripts:
-      - name: Install deps
+      - name: Build web UI (static export)
         script: |
-          cd "$CM_BUILD_DIR"
-          npm install -g pnpm@9.15.9
-          pnpm install --filter @ride-together/mobile...
-      - name: Sync + assemble
+          set -e
+          cd "$CM_BUILD_DIR/apps/web"
+          npm install --no-audit --no-fund
+          export MOBILE_STATIC_EXPORT=1
+          export NEXT_PUBLIC_API_URL="${NEXT_PUBLIC_API_URL:-https://api.ridetogether.invalid}"
+          npx next build
+      - name: Bundle + assemble
         script: |
+          set -e
           cd "$CM_BUILD_DIR/apps/mobile"
-          test -n "$CAPACITOR_SERVER_URL"
+          npm install --no-audit --no-fund
+          rm -rf www
+          cp -R ../web/out www
           npx cap sync android
           cd android
           chmod +x gradlew

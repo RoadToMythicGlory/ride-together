@@ -1,29 +1,33 @@
-﻿import type { CapacitorConfig } from '@capacitor/cli';
+import type { CapacitorConfig } from '@capacitor/cli';
 
 /**
- * Store / CI: set CAPACITOR_SERVER_URL to your public HTTPS web app
- * (e.g. https://app.ridetogether.org). Dev defaults to local Next.js.
+ * Production (store builds): the web UI is bundled into `www/` (Next.js static
+ * export) — no server URL, the app is fully self-contained.
+ *
+ * Dev only: set CAPACITOR_SERVER_URL (or MOBILE_WEB_URL) to point the shell at
+ * a running dev server, e.g. http://localhost:3000.
  */
-const serverUrl =
-  process.env.CAPACITOR_SERVER_URL?.trim() ||
-  process.env.MOBILE_WEB_URL?.trim() ||
-  'http://localhost:3000';
-const isHttps = serverUrl.startsWith('https://');
+const devServerUrl =
+  process.env.CAPACITOR_SERVER_URL?.trim() || process.env.MOBILE_WEB_URL?.trim() || '';
 
 const config: CapacitorConfig = {
   appId: 'org.ridetogether.app',
   appName: 'RideTogether',
   webDir: 'www',
-  server: {
-    url: serverUrl,
-    cleartext: !isHttps,
-  },
+  ...(devServerUrl
+    ? {
+        server: {
+          url: devServerUrl,
+          cleartext: !devServerUrl.startsWith('https://'),
+        },
+      }
+    : {}),
   ios: {
     contentInset: 'automatic',
     scheme: 'RideTogether',
   },
   android: {
-    allowMixedContent: !isHttps,
+    allowMixedContent: false,
   },
 };
 

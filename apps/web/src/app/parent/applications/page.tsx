@@ -17,7 +17,7 @@ export default function ParentApplicationsPage() {
       </div>
       {error ? <p className="text-sm text-danger">{error}</p> : null}
       {!error && !items.length ? <p className="text-sm text-muted">עדיין לא הוגשו בקשות.</p> : null}
-      {items.map((app, i) => <ManifestRow key={app.id} index={i} title={`בקשה עבור ${app.child?.nickname ?? 'ילד'}`} meta={app.status} href={`/parent/applications/${app.id}`} accent={app.status === 'APPROVED' ? 'ink' : 'accent'} />)}
+      {items.map((app, i) => <ManifestRow key={app.id} index={i} title={`בקשה עבור ${app.child?.nickname ?? 'ילד'}`} meta={app.status} href={`/parent/applications/view?id=${app.id}`} accent={app.status === 'APPROVED' ? 'ink' : 'accent'} />)}
     </AppChrome>
   );
 }

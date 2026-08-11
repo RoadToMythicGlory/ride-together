@@ -11,7 +11,7 @@ export default function RiderUpcomingPage() {
   return (
     <AppChrome area="rider" title="המפגשים שלי" subtitle="מה שכבר על המסלול.">
       {error ? <p className="text-sm text-danger">{error}</p> : null}{!error && !rsvps.length ? <p className="text-sm text-muted">אין מפגשים שמורים.</p> : null}
-      <div className="space-y-4">{rsvps.map((rsvp, i) => { const event = rsvp.event; return <EventPoster key={rsvp.id} index={i} href={`/rider/events/${event.id}`} title={event.title} region={event.region?.nameHe ?? ''} when={`${rsvp.status} · ${new Date(event.startsAt).toLocaleString('he-IL')}`} childrenCount={event.childCapacity ?? 0} riders={0} riderTarget={event.riderTarget ?? 0} summary={event.aboutText?.slice(0, 120)} />; })}</div>
+      <div className="space-y-4">{rsvps.map((rsvp, i) => { const event = rsvp.event; return <EventPoster key={rsvp.id} index={i} href={`/rider/events/view?id=${event.id}`} title={event.title} region={event.region?.nameHe ?? ''} when={`${rsvp.status} · ${new Date(event.startsAt).toLocaleString('he-IL')}`} childrenCount={event.childCapacity ?? 0} riders={0} riderTarget={event.riderTarget ?? 0} summary={event.aboutText?.slice(0, 120)} />; })}</div>
     </AppChrome>
   );
 }

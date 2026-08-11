@@ -22,7 +22,7 @@ export default function ManagerApplicationsPage() {
           index={i}
           title={`בקשה #${q.id.slice(-6)} · ${q.child?.nickname ?? ''}`}
           meta={q.status}
-          href={`/manager/applications/${q.id}`}
+          href={`/manager/applications/view?id=${q.id}`}
           accent="accent"
         />
       ))}
