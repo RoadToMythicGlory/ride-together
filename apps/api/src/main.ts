@@ -7,7 +7,13 @@ import helmet from 'helmet';
 import { loadEnv } from '@ride-together/config';
 import { AppModule } from './app.module';
 
-loadDotenv({ path: resolve(__dirname, '../../../.env') });
+for (const candidate of [
+  resolve(__dirname, '../../../.env'), // monorepo root (dev)
+  resolve(__dirname, '../../.env'), // apps/api/.env
+  resolve(process.cwd(), '.env'), // Passenger app root
+]) {
+  loadDotenv({ path: candidate });
+}
 
 async function bootstrap() {
   const env = loadEnv();
