@@ -161,13 +161,22 @@ async function main() {
 
   await seedTenantRoles(tenant.id);
 
-  const passwordHash = await bcrypt.hash('ChangeMe123!', 12);
+  const adminEmail = (
+    process.env.SEED_ADMIN_EMAIL ?? 'admin@ride-together.local'
+  ).toLowerCase();
+  const adminPassword = process.env.SEED_ADMIN_PASSWORD ?? 'ChangeMe123!';
+  const adminName = process.env.SEED_ADMIN_NAME ?? 'Platform Admin';
+  const passwordHash = await bcrypt.hash(adminPassword, 12);
   const admin = await prisma.user.upsert({
-    where: { email: 'admin@ride-together.local' },
-    update: { emailVerifiedAt: new Date(), passwordHash },
+    where: { email: adminEmail },
+    update: {
+      fullName: adminName,
+      emailVerifiedAt: new Date(),
+      passwordHash,
+    },
     create: {
-      email: 'admin@ride-together.local',
-      fullName: 'Platform Admin',
+      email: adminEmail,
+      fullName: adminName,
       passwordHash,
       locale: 'he',
       emailVerifiedAt: new Date(),
