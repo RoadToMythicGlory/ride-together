@@ -1,0 +1,8 @@
+/home/lancjvis/public_html
+/home/lancjvis/ornamenta.lanceloterp.io
+/home/lancjvis/www/or
+/home/lancjvis/www/api-or
+/home/lancjvis/www/rge
+/home/lancjvis/www/api-rge
+/home/lancjvis/www/sport5
+/home/lancjvis/www/api

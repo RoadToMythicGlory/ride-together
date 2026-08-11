@@ -1,0 +1,54 @@
+/* Dark is the default product theme. Light is opt-in via data-theme="light". */
+:root,
+[data-theme='dark'] {
+  color-scheme: dark;
+  --bg: #0b0f14;
+  --surface: #141a22;
+  --ink: #eef2f6;
+  --muted: #8b95a8;
+  --line: #243041;
+  --accent: #00b3b3;
+  --accent-deep: #009494;
+  --accent-soft: rgba(0, 179, 179, 0.16);
+  --danger: #e85a5a;
+  --success: #3dba7a;
+  --shadow-soft: 0 1px 0 rgba(0, 0, 0, 0.35);
+  --radius-sm: 10px;
+  --radius-md: 14px;
+  --radius-lg: 22px;
+  --nav-h: 64px;
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --font: var(--font-heebo), "Heebo", sans-serif;
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --dur-fast: 120ms;
+  --dur: 180ms;
+  /* Always-dark surface for photo overlays / inverse panels (never flips with theme) */
+  --void: #070a0e;
+  --theme-color: #0b0f14;
+}
+
+[data-theme='light'] {
+  color-scheme: light;
+  --bg: #f3f5f7;
+  --surface: #ffffff;
+  --ink: #0b1220;
+  --muted: #5b667a;
+  --line: #e6eaf0;
+  --accent: #00a3a3;
+  --accent-deep: #007a7a;
+  --accent-soft: rgba(0, 163, 163, 0.12);
+  --danger: #c23b3b;
+  --success: #0f7a4d;
+  --shadow-soft: 0 1px 0 rgba(11, 18, 32, 0.04);
+  --void: #0b1220;
+  --theme-color: #f3f5f7;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root,
+  [data-theme='dark'],
+  [data-theme='light'] {
+    --dur-fast: 1ms;
+    --dur: 1ms;
+  }
+}

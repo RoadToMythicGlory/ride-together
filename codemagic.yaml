@@ -1,0 +1,114 @@
+# RideTogether — Capacitor builds (Codemagic Mac runners)
+# Docs: https://docs.codemagic.io/yaml-quick-start/building-an-ionic-app/
+#
+# Before first build (you do this once in the Codemagic UI after login):
+# 1. Connect this GitHub/GitLab repo
+# 2. Team settings → Integrations → App Store Connect API key
+# 3. Environment variable group `ride_together_mobile`:
+#      CAPACITOR_SERVER_URL = https://YOUR-PRODUCTION-WEB-URL  (required, HTTPS)
+#      APP_STORE_APPLE_ID   = numeric App Store Connect app id (after you create the app)
+# 4. Code signing: enable automatic iOS signing for bundle id org.ridetogether.app
+#    OR upload distribution cert + App Store profile
+# 5. Start workflow: ios-testflight
+
+workflows:
+  ios-testflight:
+    name: iOS → TestFlight
+    max_build_duration: 120
+    instance_type: mac_mini_m2
+    working_directory: apps/mobile
+    integrations:
+      # Rename to match the integration name you create in Codemagic UI
+      app_store_connect: RideTogether
+    environment:
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: org.ridetogether.app
+      groups:
+        - ride_together_mobile
+      vars:
+        XCODE_WORKSPACE: ios/App/App.xcworkspace
+        XCODE_SCHEME: App
+        # Set APP_STORE_APPLE_ID in the env group after creating the app in ASC
+      node: 22
+      xcode: latest
+      cocoapods: default
+    scripts:
+      - name: Install JS deps
+        script: |
+          npm install --legacy-peer-deps || true
+          corepack enable
+          # Prefer pnpm from monorepo root if available
+          cd "$CM_BUILD_DIR"
+          if command -v pnpm >/dev/null 2>&1; then
+            pnpm install --filter @ride-together/mobile...
+          else
+            npm install -g pnpm@9.15.9
+            pnpm install --filter @ride-together/mobile...
+          fi
+      - name: Point shell at production web + sync native
+        script: |
+          cd "$CM_BUILD_DIR/apps/mobile"
+          test -n "$CAPACITOR_SERVER_URL" || { echo "CAPACITOR_SERVER_URL missing (HTTPS required)"; exit 1; }
+          case "$CAPACITOR_SERVER_URL" in
+            https://*) ;;
+            *) echo "CAPACITOR_SERVER_URL must be https://..."; exit 1 ;;
+          esac
+          npx cap sync ios
+      - name: CocoaPods
+        script: |
+          cd "$CM_BUILD_DIR/apps/mobile/ios/App"
+          pod install
+      - name: Apply code signing profiles
+        script: xcode-project use-profiles
+      - name: Increment build number
+        script: |
+          cd "$CM_BUILD_DIR/apps/mobile/ios/App"
+          if [ -n "${APP_STORE_APPLE_ID:-}" ]; then
+            LATEST=$(app-store-connect get-latest-testflight-build-number "$APP_STORE_APPLE_ID" || echo 0)
+            agvtool new-version -all $((LATEST + 1))
+          else
+            agvtool new-version -all $((CM_BUILD_NUMBER))
+          fi
+      - name: Build IPA
+        script: |
+          cd "$CM_BUILD_DIR/apps/mobile"
+          xcode-project build-ipa \
+            --workspace "$XCODE_WORKSPACE" \
+            --scheme "$XCODE_SCHEME"
+    artifacts:
+      - apps/mobile/build/ios/ipa/*.ipa
+      - apps/mobile/ios/App/build/ios/ipa/*.ipa
+      - /tmp/xcodebuild_logs/*.log
+    publishing:
+      app_store_connect:
+        auth: integration
+        submit_to_testflight: true
+        # submit_to_app_store: false until you are ready for review
+
+  android-debug:
+    name: Android debug APK
+    max_build_duration: 90
+    instance_type: linux_x2
+    working_directory: apps/mobile
+    environment:
+      groups:
+        - ride_together_mobile
+      node: 22
+      java: 17
+    scripts:
+      - name: Install deps
+        script: |
+          cd "$CM_BUILD_DIR"
+          npm install -g pnpm@9.15.9
+          pnpm install --filter @ride-together/mobile...
+      - name: Sync + assemble
+        script: |
+          cd "$CM_BUILD_DIR/apps/mobile"
+          test -n "$CAPACITOR_SERVER_URL"
+          npx cap sync android
+          cd android
+          chmod +x gradlew
+          ./gradlew assembleDebug
+    artifacts:
+      - apps/mobile/android/app/build/outputs/**/*.apk

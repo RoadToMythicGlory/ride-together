@@ -1,0 +1,41 @@
+# dependencies
+node_modules
+
+# builds
+dist
+.next
+.turbo
+coverage
+out
+build
+
+# env / secrets
+.env
+.env.*
+!.env.example
+packages/database/.env
+
+# local data / uploads
+apps/api/uploads
+packages/database/prisma/*.db
+packages/database/src/generated
+logs
+
+# logs & OS
+*.log
+.DS_Store
+Thumbs.db
+
+# IDE / tooling
+.idea
+.vscode/*
+!.vscode/extensions.json
+*.swp
+*.swo
+
+# mobile native build artifacts
+apps/mobile/android/app/build
+apps/mobile/android/.gradle
+apps/mobile/ios/App/Pods
+apps/mobile/ios/App/build
+apps/mobile/ios/DerivedData

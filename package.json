@@ -1,0 +1,19 @@
+{
+  "name": "ride-together",
+  "private": true,
+  "packageManager": "pnpm@9.15.9",
+  "scripts": {
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "test": "turbo run test",
+    "db:generate": "pnpm --filter @ride-together/database generate",
+    "db:migrate": "pnpm --filter @ride-together/database exec prisma migrate dev",
+    "db:seed": "pnpm --filter @ride-together/database seed",
+    "db:studio": "pnpm --filter @ride-together/database studio"
+  },
+  "devDependencies": {
+    "turbo": "^2.5.4",
+    "typescript": "^5.8.3"
+  }
+}

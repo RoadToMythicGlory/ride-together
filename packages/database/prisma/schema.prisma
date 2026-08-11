@@ -1,0 +1,736 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum PlatformRole {
+  SUPER_ADMIN
+}
+
+enum MembershipStatus {
+  ACTIVE
+  INVITED
+  SUSPENDED
+}
+
+enum ApplicationStatus {
+  DRAFT
+  SUBMITTED
+  UNDER_REVIEW
+  MORE_INFO_REQUIRED
+  VERIFIED
+  APPROVED
+  WAITLISTED
+  ASSIGNED_TO_EVENT
+  PARTICIPATION_CONFIRMED
+  PARTICIPATION_DECLINED
+  COMPLETED
+  REJECTED
+  WITHDRAWN
+  ARCHIVED
+}
+
+enum EventStatus {
+  DRAFT
+  PLANNING
+  OPEN_FOR_RIDERS
+  FULL
+  CONFIRMED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+  POSTPONED
+}
+
+enum RsvpStatus {
+  INTERESTED
+  CONFIRMED
+  WAITLISTED
+  CANCELLED
+  CHECKED_IN
+  NO_SHOW
+}
+
+enum ParticipationStatus {
+  ASSIGNED
+  INVITED
+  PARENT_CONFIRMED
+  PARENT_DECLINED
+  ATTENDED
+  CANCELLED
+  NO_SHOW
+}
+
+enum LocationVisibilityPolicy {
+  PUBLIC
+  AFTER_RSVP
+  BEFORE_EVENT
+  APPROVED_ONLY
+}
+
+enum DevicePlatform {
+  IOS
+  ANDROID
+  WEB
+}
+
+enum MediaVisibility {
+  PRIVATE
+  EVENT_PARTICIPANTS
+  TENANT_COMMUNITY
+  PUBLIC
+}
+
+enum ModerationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum AuthTokenType {
+  EMAIL_VERIFY
+  PASSWORD_RESET
+}
+
+model User {
+  id               String    @id @default(cuid())
+  email            String    @unique
+  passwordHash     String    @map("password_hash")
+  fullName         String    @map("full_name")
+  phone            String?
+  locale           String    @default("he")
+  isActive         Boolean   @default(true) @map("is_active")
+  suspendedAt      DateTime? @map("suspended_at")
+  emailVerifiedAt  DateTime? @map("email_verified_at")
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
+
+  platformRoles          PlatformRoleAssignment[]
+  memberships            TenantMembership[]
+  riderProfile           RiderProfile?
+  parentProfile          ParentProfile?
+  refreshTokens          RefreshToken[]
+  authTokens             AuthToken[]
+  notificationRegions    UserNotificationRegion[]
+  devices                Device[]
+  notifications          Notification[]
+  auditLogs              AuditLog[]                @relation("AuditActor")
+  guardianships          ChildGuardian[]
+  submittedApplications  ChildApplication[]       @relation("ApplicationSubmitter")
+  eventRsvps             EventRiderRSVP[]
+  assignedChildren       EventChildAssignment[]   @relation("AssignmentActor")
+  uploadedMedia          MediaAsset[]             @relation("MediaUploader")
+  consents               Consent[]                @relation("ConsentActor")
+  campaignsCreated       NotificationCampaign[]   @relation("CampaignCreator")
+
+  @@map("users")
+}
+
+model AuthToken {
+  id        String        @id @default(cuid())
+  userId    String        @map("user_id")
+  type      AuthTokenType
+  tokenHash String        @map("token_hash")
+  expiresAt DateTime      @map("expires_at")
+  usedAt    DateTime?     @map("used_at")
+  createdAt DateTime      @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([tokenHash])
+  @@index([userId, type])
+  @@map("auth_tokens")
+}
+
+model PlatformRoleAssignment {
+  id        String       @id @default(cuid())
+  userId    String       @map("user_id")
+  role      PlatformRole
+  createdAt DateTime     @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, role])
+  @@map("platform_role_assignments")
+}
+
+model RefreshToken {
+  id        String    @id @default(cuid())
+  userId    String    @map("user_id")
+  tokenHash String    @map("token_hash")
+  expiresAt DateTime  @map("expires_at")
+  revokedAt DateTime? @map("revoked_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([tokenHash])
+  @@map("refresh_tokens")
+}
+
+model Tenant {
+  id        String   @id @default(cuid())
+  slug      String   @unique
+  name      String
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  memberships           TenantMembership[]
+  roles                 Role[]
+  children              Child[]
+  applications          ChildApplication[]
+  events                Event[]
+  notificationRegions   UserNotificationRegion[]
+  devices               Device[]
+  notifications         Notification[]
+  campaigns             NotificationCampaign[]
+  mediaAssets           MediaAsset[]
+  auditLogs             AuditLog[]
+  outboxEvents          OutboxEvent[]
+  settings              TenantSetting[]
+  riderProfiles         RiderProfile[]
+  parentProfiles        ParentProfile[]
+
+  @@map("tenants")
+}
+
+model TenantSetting {
+  id        String   @id @default(cuid())
+  tenantId  String   @map("tenant_id")
+  key       String
+  value     Json
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, key])
+  @@map("tenant_settings")
+}
+
+model TenantMembership {
+  id        String           @id @default(cuid())
+  tenantId  String           @map("tenant_id")
+  userId    String           @map("user_id")
+  status    MembershipStatus @default(ACTIVE)
+  createdAt DateTime         @default(now()) @map("created_at")
+  updatedAt DateTime         @updatedAt @map("updated_at")
+
+  tenant Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user   User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  roles  MembershipRole[]
+
+  @@unique([tenantId, userId])
+  @@index([userId])
+  @@map("tenant_memberships")
+}
+
+model Role {
+  id          String   @id @default(cuid())
+  tenantId    String?  @map("tenant_id")
+  key         String
+  name        String
+  description String?
+  isSystem    Boolean  @default(true) @map("is_system")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  tenant      Tenant?          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  permissions RolePermission[]
+  memberships MembershipRole[]
+
+  @@unique([tenantId, key])
+  @@map("roles")
+}
+
+model Permission {
+  id          String   @id @default(cuid())
+  key         String   @unique
+  description String?
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  roles RolePermission[]
+
+  @@map("permissions")
+}
+
+model RolePermission {
+  roleId       String @map("role_id")
+  permissionId String @map("permission_id")
+
+  role       Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
+  @@map("role_permissions")
+}
+
+model MembershipRole {
+  membershipId String @map("membership_id")
+  roleId       String @map("role_id")
+
+  membership TenantMembership @relation(fields: [membershipId], references: [id], onDelete: Cascade)
+  role       Role             @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@id([membershipId, roleId])
+  @@map("membership_roles")
+}
+
+model RiderProfile {
+  id        String   @id @default(cuid())
+  userId    String   @unique @map("user_id")
+  tenantId  String   @map("tenant_id")
+  cityId    String?  @map("city_id")
+  bio       String?
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  city   City?  @relation(fields: [cityId], references: [id])
+
+  @@index([tenantId])
+  @@map("rider_profiles")
+}
+
+model ParentProfile {
+  id        String   @id @default(cuid())
+  userId    String   @unique @map("user_id")
+  tenantId  String   @map("tenant_id")
+  cityId    String?  @map("city_id")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  city   City?  @relation(fields: [cityId], references: [id])
+
+  @@index([tenantId])
+  @@map("parent_profiles")
+}
+
+model GeographicRegion {
+  id        String   @id @default(cuid())
+  country   String   @default("IL")
+  key       String
+  nameHe    String   @map("name_he")
+  nameEn    String   @map("name_en")
+  sortOrder Int      @default(0) @map("sort_order")
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  cities              City[]
+  notificationSubs    UserNotificationRegion[]
+  events              Event[]
+  children            Child[]
+
+  @@unique([country, key])
+  @@map("geographic_regions")
+}
+
+model City {
+  id        String   @id @default(cuid())
+  regionId  String   @map("region_id")
+  key       String
+  nameHe    String   @map("name_he")
+  nameEn    String   @map("name_en")
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  region           GeographicRegion         @relation(fields: [regionId], references: [id], onDelete: Cascade)
+  notificationSubs UserNotificationRegion[]
+  events           Event[]
+  children         Child[]
+  riderProfiles    RiderProfile[]
+  parentProfiles   ParentProfile[]
+
+  @@unique([regionId, key])
+  @@index([regionId])
+  @@map("cities")
+}
+
+model UserNotificationRegion {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  tenantId  String   @map("tenant_id")
+  regionId  String?  @map("region_id")
+  cityId    String?  @map("city_id")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user   User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tenant Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  region GeographicRegion? @relation(fields: [regionId], references: [id], onDelete: Cascade)
+  city   City?             @relation(fields: [cityId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, regionId])
+  @@index([tenantId, cityId])
+  @@index([userId, tenantId])
+  @@map("user_notification_regions")
+}
+
+model Child {
+  id              String   @id @default(cuid())
+  tenantId        String   @map("tenant_id")
+  nickname        String
+  ageYears        Int?     @map("age_years")
+  ageRangeLabel   String?  @map("age_range_label")
+  regionId        String?  @map("region_id")
+  cityId          String?  @map("city_id")
+  supportCategory String?  @map("support_category")
+  isVerified      Boolean  @default(false) @map("is_verified")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  tenant       Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  region       GeographicRegion?   @relation(fields: [regionId], references: [id])
+  city         City?               @relation(fields: [cityId], references: [id])
+  privateData  ChildPrivateData?
+  guardians    ChildGuardian[]
+  applications ChildApplication[]
+  assignments  EventChildAssignment[]
+
+  @@index([tenantId])
+  @@index([tenantId, cityId])
+  @@map("children")
+}
+
+model ChildPrivateData {
+  id                   String   @id @default(cuid())
+  childId              String   @unique @map("child_id")
+  fullName             String?  @map("full_name")
+  privateStory         String?  @map("private_story")
+  medicalSupportNotes  String?  @map("medical_support_notes")
+  accessibilityNotes   String?  @map("accessibility_notes")
+  schoolOrHomeNotes    String?  @map("school_or_home_notes")
+  internalStaffNotes   String?  @map("internal_staff_notes")
+  createdAt            DateTime @default(now()) @map("created_at")
+  updatedAt            DateTime @updatedAt @map("updated_at")
+
+  child Child @relation(fields: [childId], references: [id], onDelete: Cascade)
+
+  @@map("child_private_data")
+}
+
+model ChildGuardian {
+  id           String   @id @default(cuid())
+  childId      String   @map("child_id")
+  userId       String   @map("user_id")
+  relationship String
+  isPrimary    Boolean  @default(true) @map("is_primary")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  child Child @relation(fields: [childId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([childId, userId])
+  @@index([userId])
+  @@map("child_guardians")
+}
+
+model ChildApplication {
+  id              String            @id @default(cuid())
+  tenantId        String            @map("tenant_id")
+  childId         String            @map("child_id")
+  submitterUserId String            @map("submitter_user_id")
+  status          ApplicationStatus @default(DRAFT)
+  reasonSummary   String?           @map("reason_summary")
+  contactPhone    String?           @map("contact_phone")
+  preferredDates  String?           @map("preferred_dates")
+  likesMotorcycles Boolean?         @map("likes_motorcycles")
+  noiseSensitivity Boolean?         @map("noise_sensitivity")
+  preferredScale  String?           @map("preferred_scale")
+  previousParticipation Boolean?    @map("previous_participation")
+  createdAt       DateTime          @default(now()) @map("created_at")
+  updatedAt       DateTime          @updatedAt @map("updated_at")
+
+  tenant      Tenant                     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  child       Child                      @relation(fields: [childId], references: [id], onDelete: Cascade)
+  submitter   User                       @relation("ApplicationSubmitter", fields: [submitterUserId], references: [id])
+  history     ApplicationStatusHistory[]
+  consents    Consent[]
+  assignments EventChildAssignment[]
+
+  @@index([tenantId, status])
+  @@index([submitterUserId])
+  @@index([childId])
+  @@map("child_applications")
+}
+
+model ApplicationStatusHistory {
+  id            String            @id @default(cuid())
+  applicationId String            @map("application_id")
+  actorUserId   String?           @map("actor_user_id")
+  fromStatus    ApplicationStatus? @map("from_status")
+  toStatus      ApplicationStatus @map("to_status")
+  reason        String?
+  createdAt     DateTime          @default(now()) @map("created_at")
+
+  application ChildApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+
+  @@index([applicationId, createdAt])
+  @@map("application_status_history")
+}
+
+model Event {
+  id                       String                   @id @default(cuid())
+  tenantId                 String                   @map("tenant_id")
+  title                    String
+  description              String?
+  aboutText                String?                  @map("about_text")
+  audienceText             String?                  @map("audience_text")
+  flowSteps                Json?                    @map("flow_steps")
+  eventType                String?                  @map("event_type")
+  status                   EventStatus              @default(DRAFT)
+  startsAt                 DateTime                 @map("starts_at")
+  endsAt                   DateTime?                @map("ends_at")
+  riderGatheringAt         DateTime?                @map("rider_gathering_at")
+  regionId                 String                   @map("region_id")
+  cityId                   String?                  @map("city_id")
+  publicMeetingArea        String?                  @map("public_meeting_area")
+  exactLocation            String?                  @map("exact_location")
+  locationVisibilityPolicy LocationVisibilityPolicy @default(AFTER_RSVP) @map("location_visibility_policy")
+  riderTarget              Int?                     @map("rider_target")
+  riderMinimum             Int?                     @map("rider_minimum")
+  riderMaximum             Int?                     @map("rider_maximum")
+  childCapacity            Int?                     @map("child_capacity")
+  safetyNotes              String?                  @map("safety_notes")
+  noiseGuidelines          String?                  @map("noise_guidelines")
+  accessibilityNotes       String?                  @map("accessibility_notes")
+  parkingInfo              String?                  @map("parking_info")
+  weatherContingency       String?                  @map("weather_contingency")
+  cancellationReason       String?                  @map("cancellation_reason")
+  createdAt                DateTime                 @default(now()) @map("created_at")
+  updatedAt                DateTime                 @updatedAt @map("updated_at")
+
+  tenant        Tenant                  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  region        GeographicRegion        @relation(fields: [regionId], references: [id])
+  city          City?                   @relation(fields: [cityId], references: [id])
+  assignments   EventChildAssignment[]
+  rsvps         EventRiderRSVP[]
+  mediaAssets   MediaAsset[]
+  campaigns     NotificationCampaign[]
+
+  @@index([tenantId, status])
+  @@index([tenantId, startsAt])
+  @@index([regionId])
+  @@index([cityId])
+  @@map("events")
+}
+
+model EventChildAssignment {
+  id            String   @id @default(cuid())
+  eventId       String   @map("event_id")
+  childId       String   @map("child_id")
+  applicationId String   @map("application_id")
+  assignedById  String   @map("assigned_by_id")
+  assignedAt    DateTime @default(now()) @map("assigned_at")
+  notes         String?
+
+  event         Event                    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  child         Child                    @relation(fields: [childId], references: [id], onDelete: Cascade)
+  application   ChildApplication         @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  assignedBy    User                     @relation("AssignmentActor", fields: [assignedById], references: [id])
+  participation EventChildParticipation?
+
+  @@unique([eventId, childId])
+  @@unique([eventId, applicationId])
+  @@index([applicationId])
+  @@map("event_child_assignments")
+}
+
+model EventChildParticipation {
+  id           String              @id @default(cuid())
+  assignmentId String              @unique @map("assignment_id")
+  status       ParticipationStatus @default(ASSIGNED)
+  invitedAt    DateTime?           @map("invited_at")
+  respondedAt  DateTime?           @map("responded_at")
+  attendedAt   DateTime?           @map("attended_at")
+  notes        String?
+  createdAt    DateTime            @default(now()) @map("created_at")
+  updatedAt    DateTime            @updatedAt @map("updated_at")
+
+  assignment EventChildAssignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+
+  @@index([status])
+  @@map("event_child_participations")
+}
+
+model EventRiderRSVP {
+  id             String     @id @default(cuid())
+  eventId        String     @map("event_id")
+  userId         String     @map("user_id")
+  status         RsvpStatus @default(INTERESTED)
+  motorcycleInfo String?    @map("motorcycle_info")
+  hasPassenger   Boolean    @default(false) @map("has_passenger")
+  createdAt      DateTime   @default(now()) @map("created_at")
+  updatedAt      DateTime   @updatedAt @map("updated_at")
+
+  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([eventId, userId])
+  @@index([eventId, status])
+  @@map("event_rider_rsvps")
+}
+
+model Device {
+  id          String         @id @default(cuid())
+  userId      String         @map("user_id")
+  tenantId    String         @map("tenant_id")
+  deviceToken String         @map("device_token")
+  platform    DevicePlatform
+  appVersion  String?        @map("app_version")
+  enabled     Boolean        @default(true)
+  lastActiveAt DateTime?     @map("last_active_at")
+  revokedAt   DateTime?      @map("revoked_at")
+  createdAt   DateTime       @default(now()) @map("created_at")
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([deviceToken])
+  @@index([userId, enabled])
+  @@map("devices")
+}
+
+model Notification {
+  id        String    @id @default(cuid())
+  userId    String    @map("user_id")
+  tenantId  String    @map("tenant_id")
+  type      String
+  title     String
+  body      String
+  deepLink  String?   @map("deep_link")
+  entityType String?  @map("entity_type")
+  entityId  String?   @map("entity_id")
+  dedupeKey String?   @map("dedupe_key")
+  readAt    DateTime? @map("read_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  user      User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tenant    Tenant                 @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  deliveries NotificationDelivery[]
+
+  @@unique([dedupeKey])
+  @@index([userId, createdAt])
+  @@index([tenantId, type])
+  @@map("notifications")
+}
+
+model NotificationDelivery {
+  id             String    @id @default(cuid())
+  notificationId String    @map("notification_id")
+  channel        String
+  status         String
+  providerRef    String?   @map("provider_ref")
+  error          String?
+  attemptedAt    DateTime  @default(now()) @map("attempted_at")
+  deliveredAt    DateTime? @map("delivered_at")
+
+  notification Notification @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+
+  @@index([notificationId])
+  @@map("notification_deliveries")
+}
+
+model NotificationCampaign {
+  id          String   @id @default(cuid())
+  tenantId    String   @map("tenant_id")
+  eventId     String?  @map("event_id")
+  createdById String   @map("created_by_id")
+  title       String
+  body        String
+  targetRegions Json   @map("target_regions")
+  status      String   @default("DRAFT")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  tenant    Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  event     Event? @relation(fields: [eventId], references: [id])
+  createdBy User   @relation("CampaignCreator", fields: [createdById], references: [id])
+
+  @@index([tenantId, createdAt])
+  @@map("notification_campaigns")
+}
+
+model Consent {
+  id            String   @id @default(cuid())
+  applicationId String?  @map("application_id")
+  actorUserId   String   @map("actor_user_id")
+  consentType   String   @map("consent_type")
+  version       String
+  accepted      Boolean
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  application ChildApplication? @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  actor       User              @relation("ConsentActor", fields: [actorUserId], references: [id])
+
+  @@index([applicationId, consentType])
+  @@map("consents")
+}
+
+model MediaAsset {
+  id               String           @id @default(cuid())
+  tenantId         String           @map("tenant_id")
+  eventId          String?          @map("event_id")
+  uploaderUserId   String           @map("uploader_user_id")
+  storageKey       String           @map("storage_key")
+  contentType      String           @map("content_type")
+  visibility       MediaVisibility  @default(PRIVATE)
+  moderationStatus ModerationStatus @default(PENDING) @map("moderation_status")
+  consentScope     String?          @map("consent_scope")
+  metadata         Json?
+  createdAt        DateTime         @default(now()) @map("created_at")
+
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  event    Event? @relation(fields: [eventId], references: [id])
+  uploader User   @relation("MediaUploader", fields: [uploaderUserId], references: [id])
+
+  @@index([tenantId, eventId])
+  @@map("media_assets")
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  actorUserId String? @map("actor_user_id")
+  tenantId   String?  @map("tenant_id")
+  action     String
+  entityType String   @map("entity_type")
+  entityId   String?  @map("entity_id")
+  metadata   Json?
+  ip         String?
+  userAgent  String?  @map("user_agent")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  actor  User?   @relation("AuditActor", fields: [actorUserId], references: [id])
+  tenant Tenant? @relation(fields: [tenantId], references: [id])
+
+  @@index([tenantId, createdAt])
+  @@index([entityType, entityId])
+  @@index([actorUserId, createdAt])
+  @@map("audit_logs")
+}
+
+model OutboxEvent {
+  id            String    @id @default(cuid())
+  tenantId      String?   @map("tenant_id")
+  aggregateType String    @map("aggregate_type")
+  aggregateId   String    @map("aggregate_id")
+  eventType     String    @map("event_type")
+  payload       Json
+  idempotencyKey String?  @unique @map("idempotency_key")
+  attempts      Int       @default(0)
+  availableAt   DateTime  @default(now()) @map("available_at")
+  publishedAt   DateTime? @map("published_at")
+  createdAt     DateTime  @default(now()) @map("created_at")
+
+  tenant Tenant? @relation(fields: [tenantId], references: [id])
+
+  @@index([publishedAt, availableAt])
+  @@index([eventType, createdAt])
+  @@map("outbox_events")
+}

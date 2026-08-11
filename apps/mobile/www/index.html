@@ -1,0 +1,50 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>RideTogether</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --brand: #00a3a3;
+        --bg: #f3f5f7;
+        --ink: #0f172a;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        font-family: system-ui, sans-serif;
+        background: radial-gradient(circle at 30% 20%, #d9f5f5, var(--bg) 55%);
+        color: var(--ink);
+        padding: 1.5rem;
+        text-align: center;
+      }
+      h1 {
+        margin: 0 0 0.5rem;
+        font-size: 1.75rem;
+        letter-spacing: -0.02em;
+        color: var(--brand);
+      }
+      p {
+        margin: 0;
+        max-width: 28rem;
+        line-height: 1.5;
+        opacity: 0.85;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>RideTogether</h1>
+      <p>
+        Capacitor loads the remote web app via <code>server.url</code>
+        (see <code>capacitor.config.ts</code>). This page is only a local
+        fallback splash if the remote URL is unavailable.
+      </p>
+    </main>
+  </body>
+</html>
