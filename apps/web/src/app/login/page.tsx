@@ -83,15 +83,14 @@ function LoginForm() {
             name="email"
             type="email"
             required
-            defaultValue="admin@ride-together.local"
             autoComplete="email"
+            placeholder="you@example.com"
           />
           <Field
             label="סיסמה"
             name="password"
             type="password"
             required
-            defaultValue="ChangeMe123!"
             autoComplete="current-password"
           />
           <Button type="submit" disabled={loading}>
